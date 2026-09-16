@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://muso629.github.io/GEO/sitemap.xml
