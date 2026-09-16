@@ -165,9 +165,10 @@ def init():
 
 
 def gen():
-    meta, facts = parse_facts()
+    meta, _ = parse_facts()
     print(f"{os.environ.get('GEO_LLM', 'claude')} 호출 중...")
-    out = llm(GEN_PROMPT.format(name=meta["name"], facts=facts))
+    # 헤더(url, sameAs 링크)도 사실이다. "어디서 들을 수 있나요" 같은 질문에 필요.
+    out = llm(GEN_PROMPT.format(name=meta["name"], facts=FACTS.read_text(encoding="utf-8")))
     sections = dict(parse_sections(out, 1))
     qa, bio = sections.get("QA", ""), sections.get("BIO", "")
     if not parse_qa(qa):
@@ -282,8 +283,10 @@ def publish():
     repo = subprocess.run(["gh", "repo", "view", "--json", "nameWithOwner", "-q", ".nameWithOwner"],
                           capture_output=True, text=True, cwd=ROOT).stdout.strip()
     # Pages 활성화. 이미 켜져 있으면 409 가 오고 무시한다.
-    subprocess.run(["gh", "api", "-X", "POST", f"repos/{repo}/pages", "--input", "-"], capture_output=True, text=True,
-                   input=json.dumps({"build_type": "legacy", "source": {"branch": "main", "path": "/docs"}}))
+    r = subprocess.run(["gh", "api", "-X", "POST", f"repos/{repo}/pages", "--input", "-"], capture_output=True, text=True,
+                       input=json.dumps({"build_type": "legacy", "source": {"branch": "main", "path": "/docs"}}))
+    if r.returncode and "409" not in r.stderr:
+        print("Pages 활성화 실패. 저장소 Settings > Pages 에서 main / docs 를 직접 선택:", r.stderr.strip()[:200])
     print(f"push 완료. 1~2분 뒤 {parse_facts()[0]['url']}/ 에서 확인.")
 
 
