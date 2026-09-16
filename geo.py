@@ -29,9 +29,12 @@ FACTS, QA, BIOS, SITE, CHECKS = (ROOT / n for n in ("facts.md", "qa.md", "bios.m
 TODO = "[확인 필요"
 
 FACTS_TEMPLATE = """name: Muxo
-type: MusicGroup
+type: Person
 url: https://example.com
 description: 한 줄 소개. 검색 결과와 AI 답변에 그대로 쓰인다.
+jobTitle: 직함 (Person 일 때)
+alternateName: 본명이나 다른 표기
+email:
 image: https://example.com/photo.jpg
 genre:
 sameAs: https://open.spotify.com/artist/...
@@ -201,10 +204,8 @@ def build():
         die("[확인 필요] 가 남아 있어 build 거부:\n- " + "\n- ".join(todo))
 
     name, url, desc = meta["name"], meta["url"], meta["description"]
-    entity = {"@type": meta["type"], "@id": url + "#me", "name": name, "url": url, "description": desc}
-    for k in ("image", "genre"):
-        if meta.get(k):
-            entity[k] = meta[k]
+    # 헤더의 나머지 키(jobTitle, alternateName, email, worksFor, image, genre ...)는 그대로 schema.org 속성이 된다
+    entity = {"@type": meta["type"], "@id": url + "#me", **{k: v for k, v in meta.items() if k not in ("type", "sameAs")}}
     if meta["sameAs"]:
         entity["sameAs"] = meta["sameAs"]
     faq = {
@@ -318,7 +319,7 @@ def selftest():
         d = Path(d)
         FACTS, QA, BIOS, SITE = d / "facts.md", d / "qa.md", d / "bios.md", d / "site"
         FACTS.write_text(
-            "name: 테스트\ntype: MusicGroup\nurl: https://t.example/\ndescription: 설명\nsameAs: https://x.com/t\n---\n# 정보\n- a\n",
+            "name: 테스트\ntype: MusicGroup\nurl: https://t.example/\ndescription: 설명\njobTitle: 직함\nsameAs: https://x.com/t\n---\n# 정보\n- a\n",
             encoding="utf-8",
         )
         QA.write_text("<!-- c -->\n\n## 테스트는 누구야?\n결론.\n\n둘째 문단.\n## 두 번째?\n[확인 필요: 뭔가]\n", encoding="utf-8")
@@ -333,6 +334,7 @@ def selftest():
         ld = json.loads(re.search(r'<script type="application/ld\+json">\n(.*?)\n</script>', page, re.S).group(1))
         ent, faq = ld["@graph"]
         assert ent["@type"] == "MusicGroup" and ent["url"] == "https://t.example" and ent["sameAs"] == ["https://x.com/t"]
+        assert ent["jobTitle"] == "직함" and ent["name"] == "테스트"
         assert faq["@type"] == "FAQPage" and len(faq["mainEntity"]) == 2
         assert faq["mainEntity"][0]["acceptedAnswer"]["text"] == "결론.\n\n둘째 문단."
         assert "<p>결론.</p><p>둘째 문단.</p>" in page
