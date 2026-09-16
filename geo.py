@@ -189,7 +189,9 @@ def gen():
 
 
 def paras(text):
-    return "".join(f"<p>{html.escape(p.strip())}</p>" for p in text.split("\n\n") if p.strip())
+    """문단은 <p>, 답변 안의 URL 은 링크로. JSON-LD 쪽은 원문 그대로 둔다."""
+    link = lambda s: re.sub(r"https?://[^\s<]+", lambda m: f'<a href="{m.group(0)}">{m.group(0)}</a>', s)
+    return "".join(f"<p>{link(html.escape(p.strip()))}</p>" for p in text.split("\n\n") if p.strip())
 
 
 def build():
